@@ -4,7 +4,7 @@ import com.helger.jcodemodel.JCodeModelException;
 import com.helger.jcodemodel.JDefinedClass;
 import com.helger.jcodemodel.JPackage;
 import nl.harm27.obs.websocket.generator.datamodel.events.Event;
-import nl.harm27.obs.websocket.generator.datamodel.shared.Property;
+import nl.harm27.obs.websocket.generator.datamodel.shared.ConvertedProperty;
 import nl.harm27.obs.websocket.generator.generators.generic.FunctionType;
 import nl.harm27.obs.websocket.generator.generators.generic.GenericClassGenerator;
 import nl.harm27.obs.websocket.generator.generators.generic.TypeManager;
@@ -28,7 +28,7 @@ public class EventGenerator extends GenericClassGenerator {
         eventClass._extends(eventsBaseGenerator.getBaseEventClass());
         generateJavadocForClass(eventClass.javadoc(), event.getDescription(), eventName, event.getSince(), event.getDeprecated());
 
-        for (Property property : event.getReturns()) {
+        for (ConvertedProperty property : event.getReturns()) {
             generateProperty(eventClass, property, FunctionType.GETTER);
         }
 

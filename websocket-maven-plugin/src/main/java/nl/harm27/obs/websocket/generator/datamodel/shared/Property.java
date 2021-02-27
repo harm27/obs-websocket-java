@@ -11,15 +11,19 @@ public class Property {
     private String description;
 
     public String getType() {
-        return type.replace(" (optional)", "").replace(" (Optional)", "");
+        return type.replace(" (optional)", "").replace(" (Optional)", "").replace("Array<", "").replace(">", "");
     }
 
     public boolean isOptional() {
         return type.contains("(optional)") || type.contains("(Optional)");
     }
 
+    public boolean isArray() {
+        return type.contains("Array<");
+    }
+
     public String getName() {
-        return name;
+        return name.replace(".*.", ".");
     }
 
     public String getDescription() {

@@ -56,7 +56,7 @@ public class EventCategoryGenerator extends GenericClassGenerator {
         callEventMethod.annotate(Override.class);
         JVar baseEventVar = callEventMethod.param(eventsBaseGenerator.getBaseEventClass(), "baseEvent");
         JBlock body = callEventMethod.body();
-        JSwitch eventTypeSwitch = body._switch(baseEventVar.invoke("getEventType"));
+        JSwitch eventTypeSwitch = body._switch(baseEventVar.invoke("getUpdateType"));
         for (GeneratedEvent generatedEvent : generatedEvents) {
             JBlock caseStatementBody = eventTypeSwitch._case(eventsBaseGenerator.getEnumValue(generatedEvent.getName())).body();
             caseStatementBody.add(JExpr.invoke(generatedEvent.getEventListenerMethod()).arg(baseEventVar.castTo(generatedEvent.getEventClass())));

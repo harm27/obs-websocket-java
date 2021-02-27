@@ -3,7 +3,7 @@ package nl.harm27.obs.websocket.generator.generators.requests;
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import com.helger.jcodemodel.*;
 import nl.harm27.obs.websocket.generator.datamodel.requests.Request;
-import nl.harm27.obs.websocket.generator.datamodel.shared.Property;
+import nl.harm27.obs.websocket.generator.datamodel.shared.ConvertedProperty;
 import nl.harm27.obs.websocket.generator.generators.generic.FunctionType;
 import nl.harm27.obs.websocket.generator.generators.generic.StringConstants;
 import nl.harm27.obs.websocket.generator.generators.generic.TypeManager;
@@ -55,7 +55,7 @@ public class RequestGenerator extends GenericRequestsGenerator {
     private JDefinedClass generateBuilderClass(Request request, JDefinedClass definedClass) throws JCodeModelException, UnknownTypeException {
         JDefinedClass builderClass = definedClass._class(JMod.PUBLIC | JMod.STATIC, "Builder")._extends(requestsBaseGenerator.getBaseBuilderClass());
         generateConstructor(builderClass);
-        for (Property property : request.getParams()) {
+        for (ConvertedProperty property : request.getParams()) {
             generateProperty(builderClass, property, FunctionType.BOTH);
         }
         return builderClass;
@@ -63,7 +63,7 @@ public class RequestGenerator extends GenericRequestsGenerator {
 
     private JDefinedClass generateResponseClass(Request request, JDefinedClass definedClass) throws JCodeModelException, UnknownTypeException {
         JDefinedClass responseClass = definedClass._class(JMod.PUBLIC | JMod.STATIC, "Response")._extends(requestsBaseGenerator.getBaseResponseClass());
-        for (Property property : request.getReturns()) {
+        for (ConvertedProperty property : request.getReturns()) {
             generateProperty(responseClass, property, FunctionType.GETTER);
         }
         return responseClass;

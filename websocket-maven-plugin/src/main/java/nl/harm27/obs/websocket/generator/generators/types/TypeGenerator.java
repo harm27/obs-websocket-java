@@ -3,7 +3,7 @@ package nl.harm27.obs.websocket.generator.generators.types;
 import com.helger.jcodemodel.JCodeModelException;
 import com.helger.jcodemodel.JDefinedClass;
 import com.helger.jcodemodel.JPackage;
-import nl.harm27.obs.websocket.generator.datamodel.shared.Property;
+import nl.harm27.obs.websocket.generator.datamodel.shared.ConvertedProperty;
 import nl.harm27.obs.websocket.generator.datamodel.types.TypeDefinition;
 import nl.harm27.obs.websocket.generator.generators.generic.FunctionType;
 import nl.harm27.obs.websocket.generator.generators.generic.GenericClassGenerator;
@@ -27,7 +27,7 @@ public class TypeGenerator extends GenericClassGenerator {
         generateJavadocForClass(typeClass.javadoc(), typeDefinition.getDescription(), typeName);
         typeManager.addApiType(typeName, typeClass);
 
-        for (Property property : typeDefinition.getProperties()) {
+        for (ConvertedProperty property : typeDefinition.getProperties()) {
             generateProperty(typeClass, property, FunctionType.BOTH);
         }
     }

@@ -2,14 +2,9 @@ package nl.harm27.obs.websocket.generator.generators.generic;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.helger.jcodemodel.*;
-import nl.harm27.obs.websocket.generator.datamodel.shared.Property;
+import nl.harm27.obs.websocket.generator.datamodel.shared.ConvertedProperty;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
-
-import static nl.harm27.obs.websocket.generator.generators.generic.StringUtil.*;
 
 public abstract class GenericClassGenerator extends GenericGenerator {
     protected final TypeManager typeManager;
@@ -18,33 +13,41 @@ public abstract class GenericClassGenerator extends GenericGenerator {
         this.typeManager = typeManager;
     }
 
-    protected void generateProperty(JDefinedClass targetClass, Property property, FunctionType functionType) throws JCodeModelException, UnknownTypeException {
-        List<String> propertyPath = Arrays.stream(property.getName().split("\\.")).filter(element -> !element.equalsIgnoreCase("*")).collect(Collectors.toList());
-        if (propertyPath.size() > 1) {
-            generateSubClassForProperty(targetClass, propertyPath, property, functionType);
+    protected void generateProperty(JDefinedClass targetClass, ConvertedProperty property, FunctionType functionType) throws JCodeModelException, UnknownTypeException {
+        if (property.isSingleLevel()) {
+            generateField(targetClass, property, functionType);
         } else {
-            generateFieldForProperty(targetClass, functionType, new Field(property.getName(), property.getType(), property.getDescription(), property.isOptional()));
+            generateSubClass(targetClass, property, functionType);
         }
     }
 
-    protected JFieldVar generateFieldForProperty(JDefinedClass targetClass, FunctionType functionType, Field field) throws JCodeModelException, UnknownTypeException {
-        AbstractJType fieldType;
-        AbstractJType typeClass = field.getTypeClass();
-        if (typeClass != null)
-            fieldType = typeClass;
-        else
-            fieldType = typeManager.getType(targetClass, field.getFullName(), field.getType(), field.getDescription());
+    private void generateSubClass(JDefinedClass targetClass, ConvertedProperty property, FunctionType functionType) throws JCodeModelException, UnknownTypeException {
+        JDefinedClass rootClass = getRootClass(targetClass);
 
-        JFieldVar fieldVar = targetClass.field(JMod.PRIVATE, fieldType, generateValidFieldName(field.getName()));
-        fieldVar.annotate(JsonProperty.class).param(field.getAnnotationName());
+        Optional<JDefinedClass> foundSubClass = rootClass.classes().stream().filter(sub -> property.getClassName().equalsIgnoreCase(sub.name())).findFirst();
+        if (foundSubClass.isPresent())
+            return;
+
+        JDefinedClass subClass = rootClass._class(JMod.PUBLIC, property.getClassName());
+        generateField(targetClass, new ConvertedProperty(property, subClass.name()), functionType);
+        for (ConvertedProperty convertedProperty : property.getProperties()) {
+            generateProperty(subClass, convertedProperty, functionType);
+        }
+    }
+
+    protected JFieldVar generateField(JDefinedClass targetClass, ConvertedProperty property, FunctionType functionType) throws JCodeModelException, UnknownTypeException {
+        AbstractJType fieldType = typeManager.getType(targetClass, property.getName(), property.getType(), property.getDescription());
+
+        JFieldVar fieldVar = targetClass.field(JMod.PRIVATE, fieldType, property.getFieldName());
+        fieldVar.annotate(JsonProperty.class).param(property.getName());
 
         if (functionType.hasGetter()) {
-            JMethod getterMethod = generateGetter(targetClass, fieldType, fieldVar, field);
+            JMethod getterMethod = generateGetter(targetClass, fieldType, fieldVar, property);
             generateAdditionalGetters(targetClass, getterMethod);
         }
 
         if (functionType.hasSetter())
-            generateSetter(targetClass, fieldType, fieldVar, field);
+            generateSetter(targetClass, fieldType, fieldVar, property);
 
         return fieldVar;
     }
@@ -61,33 +64,32 @@ public abstract class GenericClassGenerator extends GenericGenerator {
         }
     }
 
-
     private void convertStringToList(JDefinedClass targetClass, JMethod getterMethod) {
         JMethod method = targetClass.method(JMod.PUBLIC, typeManager.getListPrimitiveType("string"), String.format("%sAsList", getterMethod.name()));
         method.body()._return(typeManager.getArraysAsList(JExpr._this().invoke(getterMethod).invoke("split").arg("\\.")));
     }
 
-    private void generateSetter(JDefinedClass targetClass, AbstractJType fieldType, JFieldVar fieldVar, Field field) {
-        JMethod method = targetClass.method(JMod.PUBLIC, typeManager.getVoidType(), generateFieldMethodName(field.getName(), "set"));
-        method.javadoc().add(field.getDescription());
+    private void generateSetter(JDefinedClass targetClass, AbstractJType fieldType, JFieldVar fieldVar, ConvertedProperty property) {
+        JMethod method = targetClass.method(JMod.PUBLIC, typeManager.getVoidType(), property.getMethodName("set"));
+        method.javadoc().add(property.getDescription());
 
-        JVar param = method.param(fieldType, generateValidFieldName(field.getName()));
+        JVar param = method.param(fieldType, property.getFieldName());
         method.body().add(JExpr._this().ref(fieldVar).assign(param));
     }
 
-    private JMethod generateGetter(JDefinedClass targetClass, AbstractJType fieldType, JFieldVar fieldVar, Field field) {
+    private JMethod generateGetter(JDefinedClass targetClass, AbstractJType fieldType, JFieldVar fieldVar, ConvertedProperty property) {
         String methodPrefix = "get";
         if (typeManager.isBoolean(fieldType))
             methodPrefix = "is";
 
         AbstractJType returnType = fieldType;
-        if (field.isOptional())
+        if (property.isOptional())
             returnType = typeManager.getOptionalForType(fieldType);
 
-        JMethod method = targetClass.method(JMod.PUBLIC, returnType, generateFieldMethodName(field.getName(), methodPrefix));
-        method.javadoc().add(field.getDescription());
+        JMethod method = targetClass.method(JMod.PUBLIC, returnType, property.getMethodName(methodPrefix));
+        method.javadoc().add(property.getDescription());
 
-        if (field.isOptional())
+        if (property.isOptional())
             method.body()._return(typeManager.getOptionalReturnForField(fieldVar));
         else
             method.body()._return(fieldVar);
@@ -95,35 +97,4 @@ public abstract class GenericClassGenerator extends GenericGenerator {
         return method;
     }
 
-    private void generateSubClassForProperty(JDefinedClass targetClass, List<String> propertyPath, Property property, FunctionType functionType) throws JCodeModelException, UnknownTypeException {
-        String name = propertyPath.get(propertyPath.size() - 1);
-
-        JDefinedClass subClass = targetClass;
-        for (String element : propertyPath) {
-            if (element.equalsIgnoreCase(name))
-                continue;
-
-            subClass = findSubClass(subClass, generateValidFieldName(element), functionType);
-        }
-
-        if (!subClass.fields().containsKey(name)) {
-            generateFieldForProperty(subClass, functionType, new Field(name, property.getName(), property.getType(), property.getDescription(), property.isOptional()));
-        }
-    }
-
-    private JDefinedClass findSubClass(JDefinedClass targetClass, String fieldName, FunctionType functionType) throws JCodeModelException, UnknownTypeException {
-        String className = generateValidClassName(fieldName);
-        JDefinedClass rootClass = getRootClass(targetClass);
-        Optional<JDefinedClass> foundSubClass = rootClass.classes().stream().filter(sub -> className.equalsIgnoreCase(sub.name())).findFirst();
-
-        JDefinedClass subClass;
-        if (foundSubClass.isEmpty()) {
-            subClass = rootClass._class(JMod.PUBLIC, className);
-            generateFieldForProperty(targetClass, functionType, new Field(fieldName, subClass.name(), "", false));
-        } else {
-            subClass = foundSubClass.get();
-        }
-
-        return subClass;
-    }
 }

@@ -30,10 +30,12 @@ public class StringUtil {
     }
 
     public static String generateValidClassName(String name) {
-        if (!name.contains(" "))
-            return capitalizeFirstChar(name);
-        else
+        if (name.contains(" "))
             return generateValidName(name, ' ', false);
+        else if (name.contains("-"))
+            return generateValidName(name, '-', false);
+        else
+            return capitalizeFirstChar(name);
     }
 
     public static String generateValidMethodName(String name) {

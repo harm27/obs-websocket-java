@@ -2,10 +2,13 @@ package nl.harm27.obs.websocket.generator.generators.requests;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.helger.jcodemodel.*;
+import nl.harm27.obs.websocket.generator.datamodel.shared.ConvertedProperty;
 import nl.harm27.obs.websocket.generator.generators.generic.*;
 
 import java.util.Arrays;
 import java.util.List;
+
+import static nl.harm27.obs.websocket.generator.generators.generic.StringConstants.*;
 
 public class RequestsBaseGenerator extends GenericBaseGenerator {
     private final JPackage basePackageModel;
@@ -25,7 +28,8 @@ public class RequestsBaseGenerator extends GenericBaseGenerator {
     }
 
     public void generate() throws JCodeModelException, UnknownTypeException {
-        requestTypeEnum = generateEnum(basePackageModel, "RequestType", requestNames, StringConstants.BASE_REQUEST_TYPE_JAVADOC);
+        requestTypeEnum = generateEnum(basePackageModel, "RequestType", requestNames, BASE_REQUEST_TYPE_JAVADOC);
+        typeManager.addApiType(requestTypeEnum.name(), requestTypeEnum);
         generateBaseRequest();
         generateBaseSender();
     }
@@ -38,16 +42,16 @@ public class RequestsBaseGenerator extends GenericBaseGenerator {
 
     private void generateBuilderClass() throws JCodeModelException {
         baseBuilderClass = basePackageModel._class(JMod.PUBLIC | JMod.ABSTRACT, "BaseBuilder");
-        generateJavadocForClass(baseBuilderClass.javadoc(), StringConstants.BASE_BUILDER_JAVADOC, StringConstants.REQUESTS_URL_PART);
+        generateJavadocForClass(baseBuilderClass.javadoc(), BASE_BUILDER_JAVADOC, REQUESTS_URL_PART);
         generateRequestMethodHelpers(baseBuilderClass);
     }
 
     private void generateRequestClass() throws JCodeModelException, UnknownTypeException {
         baseRequestClass = basePackageModel._class(JMod.PUBLIC | JMod.ABSTRACT, "BaseRequest");
-        generateJavadocForClass(baseRequestClass.javadoc(), StringConstants.BASE_REQUEST_JAVADOC, StringConstants.REQUESTS_URL_PART);
+        generateJavadocForClass(baseRequestClass.javadoc(), BASE_REQUEST_JAVADOC, REQUESTS_URL_PART);
 
-        JFieldVar requestTypeField = generateFieldForProperty(baseRequestClass, FunctionType.GETTER, new Field(requestTypeEnum, "requestType", "request-type", StringConstants.BASE_REQUEST_TYPE_JAVADOC));
-        JFieldVar messageIdField = generateFieldForProperty(baseRequestClass, FunctionType.GETTER, new Field(StringConstants.MESSAGE_ID_FIELD, "message-id", StringConstants.STRING_TYPE, StringConstants.BASE_REQUEST_MESSAGE_ID_JAVADOC));
+        JFieldVar requestTypeField = generateField(baseRequestClass, new ConvertedProperty("request-type", requestTypeEnum.name(), BASE_REQUEST_TYPE_JAVADOC), FunctionType.GETTER);
+        JFieldVar messageIdField = generateField(baseRequestClass, new ConvertedProperty("message-id", STRING_TYPE, BASE_REQUEST_MESSAGE_ID_JAVADOC), FunctionType.GETTER);
 
         generateRequestConstructor(requestTypeField, messageIdField);
         generateRequestMethods();
@@ -55,20 +59,20 @@ public class RequestsBaseGenerator extends GenericBaseGenerator {
 
     private void generateRequestMethods() {
         JMethod getResponseTypeMethod = baseRequestClass.method(JMod.PUBLIC | JMod.ABSTRACT, typeManager.getAnyClassType(), "getResponseType");
-        getResponseTypeMethod.javadoc().add(StringConstants.BASE_REQUEST_GET_RESPONSE_TYPE_METHOD_JAVADOC);
+        getResponseTypeMethod.javadoc().add(BASE_REQUEST_GET_RESPONSE_TYPE_METHOD_JAVADOC);
 
-        JMethod getRequestNameMethod = baseRequestClass.method(JMod.PUBLIC | JMod.ABSTRACT, typeManager.getPrimitiveType(StringConstants.STRING_TYPE), "getRequestName");
-        getRequestNameMethod.javadoc().add(StringConstants.BASE_REQUEST_NAME_METHODE_JAVADOC);
+        JMethod getRequestNameMethod = baseRequestClass.method(JMod.PUBLIC | JMod.ABSTRACT, typeManager.getPrimitiveType(STRING_TYPE), "getRequestName");
+        getRequestNameMethod.javadoc().add(BASE_REQUEST_NAME_METHODE_JAVADOC);
 
         JMethod isAuthenticationRequiredMethod = baseRequestClass.method(JMod.PUBLIC, typeManager.getPrimitiveType("boolean"), "isAuthenticationRequired");
-        isAuthenticationRequiredMethod.javadoc().add(StringConstants.BASE_REQUEST_AUTHENTICATION_REQUIRED_METHOD);
+        isAuthenticationRequiredMethod.javadoc().add(BASE_REQUEST_AUTHENTICATION_REQUIRED_METHOD);
         isAuthenticationRequiredMethod.body()._return(JExpr.lit(true));
     }
 
     private void generateRequestConstructor(JFieldVar requestTypeField, JFieldVar messageIdField) {
         JMethod constructor = baseRequestClass.constructor(JMod.PUBLIC);
         JVar requestTypeVar = constructor.param(requestTypeEnum, "requestType");
-        JVar messageIdVar = constructor.param(typeManager.getPrimitiveType(StringConstants.STRING_TYPE), StringConstants.MESSAGE_ID_FIELD);
+        JVar messageIdVar = constructor.param(typeManager.getPrimitiveType(STRING_TYPE), MESSAGE_ID_FIELD);
 
         JBlock body = constructor.body();
         body.add(JExpr._this().ref(requestTypeField).assign(requestTypeVar));
@@ -77,11 +81,15 @@ public class RequestsBaseGenerator extends GenericBaseGenerator {
 
     private void generateResponseClass() throws JCodeModelException, UnknownTypeException {
         baseResponseClass = basePackageModel._class(JMod.PUBLIC | JMod.ABSTRACT, "BaseResponse");
-        generateJavadocForClass(baseResponseClass.javadoc(), StringConstants.BASE_RESPONSE_JAVADOC, StringConstants.REQUESTS_URL_PART);
-        generateFieldForProperty(baseResponseClass, FunctionType.GETTER, new Field(StringConstants.MESSAGE_ID_FIELD, "message-id", StringConstants.STRING_TYPE, StringConstants.BASE_RESPONSE_MESSAGE_ID_JAVADOC));
+        generateJavadocForClass(baseResponseClass.javadoc(), StringConstants.BASE_RESPONSE_JAVADOC, REQUESTS_URL_PART);
+
+        generateField(baseResponseClass, new ConvertedProperty("message-id", STRING_TYPE, BASE_RESPONSE_MESSAGE_ID_JAVADOC), FunctionType.GETTER);
+
         JDefinedClass statusEnum = generateEnum(basePackageModel, "Status", Arrays.asList("ok", "error"), "Status of the response");
-        generateFieldForProperty(baseResponseClass, FunctionType.GETTER, new Field(statusEnum, "status", "status", StringConstants.BASE_RESPONSE_STATUS_JAVADOC));
-        generateOptionalField(baseResponseClass, typeManager.getPrimitiveType(StringConstants.STRING_TYPE));
+        typeManager.addApiType(statusEnum.name(), statusEnum);
+        generateField(baseResponseClass, new ConvertedProperty("status", statusEnum.name(), BASE_RESPONSE_STATUS_JAVADOC), FunctionType.GETTER);
+
+        generateOptionalField(baseResponseClass, typeManager.getPrimitiveType(STRING_TYPE));
     }
 
     private void generateBaseSender() throws JCodeModelException {
@@ -101,7 +109,7 @@ public class RequestsBaseGenerator extends GenericBaseGenerator {
     private void generateRequestMethodHelpers(JDefinedClass targetClass) {
         AbstractJClass consumerResponseClass = typeManager.getConsumer(baseResponseClass);
         AbstractJClass consumerRequestClass = typeManager.getBiConsumer(baseRequestClass, consumerResponseClass);
-        AbstractJClass supplierMessageIdClass = typeManager.getSupplier(typeManager.getPrimitiveType(StringConstants.STRING_TYPE));
+        AbstractJClass supplierMessageIdClass = typeManager.getSupplier(typeManager.getPrimitiveType(STRING_TYPE));
 
         JFieldVar requestConsumer = targetClass.field(JMod.PRIVATE, consumerRequestClass, "requestConsumer");
         JFieldVar messageIdSupplier = targetClass.field(JMod.PRIVATE, supplierMessageIdClass, "messageIdSupplier");
@@ -121,7 +129,7 @@ public class RequestsBaseGenerator extends GenericBaseGenerator {
     }
 
     private void generateMethods(JDefinedClass targetClass, AbstractJClass consumerResponseClass, JFieldVar requestConsumer, JFieldVar messageIdSupplier) {
-        JMethod getNewMessageIdMethod = targetClass.method(JMod.PROTECTED, typeManager.getPrimitiveType(StringConstants.STRING_TYPE), "getNewMessageId");
+        JMethod getNewMessageIdMethod = targetClass.method(JMod.PROTECTED, typeManager.getPrimitiveType(STRING_TYPE), "getNewMessageId");
         getNewMessageIdMethod.body()._return(messageIdSupplier.invoke("get"));
 
         JMethod sendMessageMethod = targetClass.method(JMod.PROTECTED, typeManager.getVoidType(), "sendMessage");

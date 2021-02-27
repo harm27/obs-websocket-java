@@ -58,7 +58,7 @@ public class MessageReceiver {
             return;
 
         BaseEvent baseEvent = (BaseEvent) objectMapper.readValue(data, eventClass);
-        for (EventListener eventListener : listenerRegistry.getListenersForEventType(baseEvent.getEventType())) {
+        for (EventListener eventListener : listenerRegistry.getListenersForEventType(baseEvent.getUpdateType())) {
             CompletableFuture.runAsync(() -> eventListener.callEvent(baseEvent));
         }
     }

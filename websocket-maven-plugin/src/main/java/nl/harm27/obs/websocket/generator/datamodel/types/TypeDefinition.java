@@ -1,6 +1,7 @@
 package nl.harm27.obs.websocket.generator.datamodel.types;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import nl.harm27.obs.websocket.generator.datamodel.shared.ConvertedProperty;
 import nl.harm27.obs.websocket.generator.datamodel.shared.Definition;
 import nl.harm27.obs.websocket.generator.datamodel.shared.Property;
 
@@ -13,8 +14,8 @@ public class TypeDefinition extends Definition {
     @JsonProperty("typedefs")
     private List<TypeMetadata> definitions;
 
-    public List<Property> getProperties() {
-        return filteredProperties(properties);
+    public List<ConvertedProperty> getProperties() {
+        return convertProperties(properties);
     }
 
     private Optional<TypeMetadata> getTypeDefinition() {
